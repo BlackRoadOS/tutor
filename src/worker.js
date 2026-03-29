@@ -37,12 +37,31 @@ export default {
         return new Response("User-agent: *\nAllow: /\nSitemap: https://tutor.blackroad.io/sitemap.xml\n", { headers: { "Content-Type": "text/plain" } });
       }
 
-      // Subject landing pages for SEO
-      const subjects = {math:'Math',calculus:'Calculus',physics:'Physics',chemistry:'Chemistry',biology:'Biology',history:'History',english:'English',coding:'Coding',statistics:'Statistics',economics:'Economics'};
-      const subjectMatch = url.pathname.slice(1).toLowerCase();
-      if (subjects[subjectMatch]) {
-        const name = subjects[subjectMatch];
-        return new Response(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name} Homework Help — AI Solver | \$1 per answer</title><meta name="description" content="Get ${name.toLowerCase()} homework solved step-by-step by AI. Paste your question, get the answer in seconds. \$1 per solve."><meta property="og:title" content="${name} Homework Solver — \$1/answer"><meta property="og:description" content="AI solves your ${name.toLowerCase()} homework step-by-step. Instant answers."><meta property="og:url" content="https://tutor.blackroad.io/${subjectMatch}"><link rel="canonical" href="https://tutor.blackroad.io/${subjectMatch}"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f5f5f5;font-family:'Space Grotesk',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center}h1{font-size:36px;margin-bottom:16px}p{opacity:.5;font-size:16px;margin-bottom:32px;max-width:500px;line-height:1.6}a{display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#FF2255,#8844FF);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:18px}.sub{margin-top:16px;opacity:.3;font-size:13px}</style></head><body><h1>${name} Homework Solver</h1><p>Paste any ${name.toLowerCase()} question. AI solves it step-by-step in seconds. \$1 per answer. No subscription needed.</p><a href="/#q=${encodeURIComponent(name + ' problem')}">Solve ${name} Now</a><p class="sub">Powered by BlackRoad OS AI — tutor.blackroad.io</p></body></html>`, {headers:{"Content-Type":"text/html;charset=utf-8"}});
+      // Topic landing pages for SEO — 100+ pages
+      const topics = {
+        // Math
+        'math':'Math','algebra':'Algebra','calculus':'Calculus','precalculus':'Pre-Calculus','geometry':'Geometry','trigonometry':'Trigonometry','statistics':'Statistics','probability':'Probability','linear-algebra':'Linear Algebra','differential-equations':'Differential Equations','discrete-math':'Discrete Math','number-theory':'Number Theory',
+        'quadratic-equations':'Quadratic Equations','systems-of-equations':'Systems of Equations','polynomials':'Polynomials','factoring':'Factoring','logarithms':'Logarithms','exponents':'Exponents','fractions':'Fractions','ratios-and-proportions':'Ratios and Proportions','percentages':'Percentages','inequalities':'Inequalities','absolute-value':'Absolute Value','complex-numbers':'Complex Numbers',
+        'derivatives':'Derivatives','integrals':'Integrals','limits':'Limits','series-and-sequences':'Series and Sequences','integration-by-parts':'Integration by Parts','u-substitution':'U-Substitution','chain-rule':'Chain Rule','product-rule':'Product Rule','related-rates':'Related Rates','optimization':'Optimization Problems',
+        'mean-median-mode':'Mean, Median, and Mode','standard-deviation':'Standard Deviation','regression':'Regression Analysis','hypothesis-testing':'Hypothesis Testing','confidence-intervals':'Confidence Intervals','normal-distribution':'Normal Distribution','binomial-distribution':'Binomial Distribution','bayes-theorem':'Bayes Theorem',
+        'matrices':'Matrices','vectors':'Vectors','eigenvalues':'Eigenvalues and Eigenvectors','dot-product':'Dot Product','cross-product':'Cross Product',
+        // Science
+        'physics':'Physics','chemistry':'Chemistry','biology':'Biology','earth-science':'Earth Science','environmental-science':'Environmental Science','astronomy':'Astronomy',
+        'newtons-laws':'Newton\'s Laws','kinematics':'Kinematics','projectile-motion':'Projectile Motion','circular-motion':'Circular Motion','work-and-energy':'Work and Energy','momentum':'Momentum','thermodynamics':'Thermodynamics','waves':'Waves and Sound','optics':'Optics','electricity':'Electricity and Circuits','magnetism':'Magnetism','quantum-mechanics':'Quantum Mechanics',
+        'stoichiometry':'Stoichiometry','chemical-bonding':'Chemical Bonding','acids-and-bases':'Acids and Bases','organic-chemistry':'Organic Chemistry','redox-reactions':'Redox Reactions','equilibrium':'Chemical Equilibrium','gas-laws':'Gas Laws','electrochemistry':'Electrochemistry','periodic-table':'Periodic Table Trends',
+        'cell-biology':'Cell Biology','genetics':'Genetics','evolution':'Evolution','ecology':'Ecology','photosynthesis':'Photosynthesis','cellular-respiration':'Cellular Respiration','dna-rna':'DNA and RNA','mitosis-meiosis':'Mitosis and Meiosis','human-anatomy':'Human Anatomy',
+        // Computer Science
+        'coding':'Coding','python':'Python','javascript':'JavaScript','java':'Java','c-plus-plus':'C++','html-css':'HTML and CSS','sql':'SQL','data-structures':'Data Structures','algorithms':'Algorithms','recursion':'Recursion','sorting-algorithms':'Sorting Algorithms','binary-search':'Binary Search','big-o-notation':'Big O Notation','object-oriented-programming':'Object-Oriented Programming','web-development':'Web Development',
+        // Humanities
+        'history':'History','english':'English','economics':'Economics','psychology':'Psychology','philosophy':'Philosophy','sociology':'Sociology','political-science':'Political Science',
+        'us-history':'US History','world-history':'World History','essay-writing':'Essay Writing','grammar':'Grammar','literary-analysis':'Literary Analysis','research-papers':'Research Papers',
+        'microeconomics':'Microeconomics','macroeconomics':'Macroeconomics','supply-and-demand':'Supply and Demand','game-theory':'Game Theory','accounting':'Accounting','finance-basics':'Finance Basics',
+      };
+      const topicMatch = url.pathname.slice(1).toLowerCase();
+      if (topics[topicMatch]) {
+        const name = topics[topicMatch];
+        const desc = `Stuck on ${name.toLowerCase()}? PitStop teaches you how to solve it — not just the answer. AI asks guiding questions until you actually understand.`;
+        return new Response(buildTopicPage(name, topicMatch, desc), {headers:{"Content-Type":"text/html;charset=utf-8"}});
       }
 
       if (request.method === "POST" && url.pathname === "/webhook/stripe") {
@@ -291,15 +310,106 @@ function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function buildTopicPage(name, slug, desc) {
+  const examples = {
+    'algebra': 'Solve 2x + 5 = 13', 'calculus': 'Find the derivative of x\u00b3 + 2x', 'physics': 'A ball is dropped from 20m. How long to hit the ground?',
+    'chemistry': 'Balance: Fe + O\u2082 \u2192 Fe\u2082O\u2083', 'biology': 'What is the difference between mitosis and meiosis?',
+    'statistics': 'Find the standard deviation of {4, 8, 6, 5, 3}', 'python': 'Write a function to check if a number is prime',
+    'economics': 'Explain supply and demand with an example', 'geometry': 'Find the area of a triangle with base 10 and height 6',
+    'derivatives': 'Find d/dx of sin(x\u00b2)', 'integrals': 'Evaluate \u222b x\u00b2 dx from 0 to 3', 'quadratic-equations': 'Solve x\u00b2 + 5x + 6 = 0',
+    'stoichiometry': 'How many grams of O\u2082 react with 10g of H\u2082?', 'genetics': 'What are the genotype ratios of a Bb x Bb cross?',
+    'recursion': 'Write a recursive function for Fibonacci in Python', 'essay-writing': 'How do I write a strong thesis statement?',
+  };
+  const example = examples[slug] || `Help me understand ${name.toLowerCase()}`;
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name} Help \u2014 AI Tutor That Teaches You | PitStop by BlackRoad</title>
+<meta name="description" content="${desc}">
+<meta property="og:title" content="${name} Help \u2014 PitStop AI Tutor">
+<meta property="og:description" content="${desc}">
+<meta property="og:url" content="https://tutor.blackroad.io/${slug}">
+<link rel="canonical" href="https://tutor.blackroad.io/${slug}">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How do I get help with ${name.toLowerCase()}?","acceptedAnswer":{"@type":"Answer","text":"PitStop uses the Socratic method \u2014 it asks guiding questions instead of giving you the answer. Try asking: ${example}"}}]}</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#f5f5f5;font-family:'Inter',sans-serif;min-height:100vh;padding:40px 20px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-family:'Space Grotesk',sans-serif;font-size:32px;margin-bottom:12px;line-height:1.3}
+.sub{color:#888;font-size:16px;line-height:1.6;margin-bottom:32px}
+.example{background:#111;border:1px solid #222;border-radius:12px;padding:24px;margin-bottom:24px}
+.example-label{color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.example-q{font-size:16px;font-style:italic;margin-bottom:12px}
+.example-a{color:#888;font-size:14px;line-height:1.6}
+.cta{display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#FF2255,#8844FF);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:18px;font-family:'Space Grotesk',sans-serif;margin-bottom:32px}
+.how{margin-bottom:32px}
+.how h2{font-family:'Space Grotesk',sans-serif;font-size:20px;margin-bottom:12px}
+.how ol{padding-left:20px;line-height:2;color:#ccc;font-size:14px}
+.pricing{background:#111;border:1px solid #222;border-radius:12px;padding:24px;margin-bottom:24px;text-align:center}
+.pricing .price{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700}
+.pricing .detail{color:#888;font-size:13px;margin-top:8px}
+.footer{color:#555;font-size:12px;margin-top:40px;text-align:center}
+.footer a{color:#888;text-decoration:none}
+</style></head><body>
+<div class="wrap">
+<h1>${name} Help</h1>
+<p class="sub">${desc}</p>
+<a class="cta" href="/#q=${encodeURIComponent(example)}">Try It Free</a>
+<div class="example">
+  <div class="example-label">Example</div>
+  <div class="example-q">"${example}"</div>
+  <div class="example-a">PitStop won't just give you the answer. It'll ask: "What's the first step you'd try?" Then guide you from there. You'll actually understand it when you're done.</div>
+</div>
+<div class="how">
+  <h2>How PitStop Works</h2>
+  <ol>
+    <li>Type your ${name.toLowerCase()} question</li>
+    <li>PitStop asks you a guiding question (not the answer)</li>
+    <li>You think, respond, learn</li>
+    <li>If you're stuck, it gives a hint \u2014 still not the answer</li>
+    <li>When you figure it out, it celebrates and offers a harder one</li>
+  </ol>
+</div>
+<div class="pricing">
+  <div class="price">First month free</div>
+  <div class="detail">No credit card. Full access. Then $10/month if you want to keep going.<br>Or $100/month for every BlackRoad product.</div>
+</div>
+<div class="footer">
+  <a href="/">All Topics</a> &middot; <a href="https://blackroad.io">BlackRoad OS</a> &middot; <a href="https://blackroad.io/pricing">Pricing</a>
+  <br><br>PitStop by BlackRoad \u2014 AI that teaches you how to think, not what to copy.
+</div>
+</div></body></html>`;
+}
+
 async function handleSitemap(env) {
   await ensureTable(env.DB);
   const rows = await env.DB.prepare(
     `SELECT id, updated_at FROM solves ORDER BY created_at DESC LIMIT 1000`
   ).all();
 
+  const topicSlugs = [
+    'math','algebra','calculus','precalculus','geometry','trigonometry','statistics','probability','linear-algebra','differential-equations','discrete-math','number-theory',
+    'quadratic-equations','systems-of-equations','polynomials','factoring','logarithms','exponents','fractions','ratios-and-proportions','percentages','inequalities','absolute-value','complex-numbers',
+    'derivatives','integrals','limits','series-and-sequences','integration-by-parts','u-substitution','chain-rule','product-rule','related-rates','optimization',
+    'mean-median-mode','standard-deviation','regression','hypothesis-testing','confidence-intervals','normal-distribution','binomial-distribution','bayes-theorem',
+    'matrices','vectors','eigenvalues','dot-product','cross-product',
+    'physics','chemistry','biology','earth-science','environmental-science','astronomy',
+    'newtons-laws','kinematics','projectile-motion','circular-motion','work-and-energy','momentum','thermodynamics','waves','optics','electricity','magnetism','quantum-mechanics',
+    'stoichiometry','chemical-bonding','acids-and-bases','organic-chemistry','redox-reactions','equilibrium','gas-laws','electrochemistry','periodic-table',
+    'cell-biology','genetics','evolution','ecology','photosynthesis','cellular-respiration','dna-rna','mitosis-meiosis','human-anatomy',
+    'coding','python','javascript','java','c-plus-plus','html-css','sql','data-structures','algorithms','recursion','sorting-algorithms','binary-search','big-o-notation','object-oriented-programming','web-development',
+    'history','english','economics','psychology','philosophy','sociology','political-science',
+    'us-history','world-history','essay-writing','grammar','literary-analysis','research-papers',
+    'microeconomics','macroeconomics','supply-and-demand','game-theory','accounting','finance-basics',
+  ];
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://tutor.blackroad.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`;
+
+  for (const slug of topicSlugs) {
+    xml += `\n<url><loc>https://tutor.blackroad.io/${slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+  }
 
   for (const row of (rows.results || [])) {
     xml += `\n<url><loc>https://tutor.blackroad.io/solve/${row.id}</loc><lastmod>${row.updated_at}</lastmod><priority>0.7</priority></url>`;

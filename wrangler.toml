@@ -1,5 +1,5 @@
 name = "tutor-blackroad"
-main = "worker-monetized.js"
+main = "src/worker.js"
 compatibility_date = "2024-09-01"
 workers_dev = false
 
