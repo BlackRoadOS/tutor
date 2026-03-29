@@ -1,0 +1,53 @@
+name: Auto SEO — Seed Questions
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed 5 random homework questions
+        run: |
+          QUESTIONS=(
+            "How do you solve quadratic inequalities"
+            "What is the difference between RNA and DNA replication"
+            "Explain the concept of opportunity cost with examples"
+            "How do you find the derivative of trigonometric functions"
+            "What were the main effects of the Protestant Reformation"
+            "How do you calculate molarity from mass and volume"
+            "What is the difference between weathering and erosion"
+            "How do you solve problems using the ideal gas law"
+            "Explain the significance of the Treaty of Versailles"
+            "How do you find the integral of exponential functions"
+            "What is the role of ribosomes in protein synthesis"
+            "How do you calculate net present value"
+            "What is the difference between conduction convection and radiation"
+            "How do you analyze rhetorical strategies in a speech"
+            "Explain the concept of elasticity in economics"
+            "How do you solve differential equations by separation of variables"
+            "What is the significance of the Krebs cycle in cellular respiration"
+            "How do you calculate the moment of inertia"
+            "What caused the Russian Revolution of 1917"
+            "How do you use integration to find area between curves"
+          )
+          
+          # Pick 5 random questions
+          for i in $(shuf -i 0-19 -n 5); do
+            curl -s "https://tutor.blackroad.io/api/solve" \
+              -H "Content-Type: application/json" \
+              -d "{\"question\":\"${QUESTIONS[$i]}\"}" > /dev/null
+            echo "Seeded: ${QUESTIONS[$i]}"
+          done
+
+      - name: Submit sitemap to IndexNow
+        run: |
+          curl -s "https://api.indexnow.org/indexnow?url=https%3A%2F%2Ftutor.blackroad.io%2Fsitemap.xml&key=blackroad-indexnow"
+          curl -s "https://api.indexnow.org/indexnow?url=https%3A%2F%2Ftutor.blackroad.io%2Fdaily&key=blackroad-indexnow"
+          echo "Sitemaps submitted"
+
+      - name: Report
+        run: |
+          COUNT=$(curl -s https://tutor.blackroad.io/sitemap.xml | grep -c "<url>")
+          echo "Tutor sitemap: $COUNT URLs"
