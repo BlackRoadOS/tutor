@@ -28,8 +28,21 @@ export default {
         return handleSitemap(env);
       }
 
+      // IndexNow verification
+      if (url.pathname === "/B95484290160465AAEB8A563630AC30A.txt") {
+        return new Response("B95484290160465AAEB8A563630AC30A", { headers: { "Content-Type": "text/plain" } });
+      }
+
       if (request.method === "GET" && url.pathname === "/robots.txt") {
         return new Response("User-agent: *\nAllow: /\nSitemap: https://tutor.blackroad.io/sitemap.xml\n", { headers: { "Content-Type": "text/plain" } });
+      }
+
+      // Subject landing pages for SEO
+      const subjects = {math:'Math',calculus:'Calculus',physics:'Physics',chemistry:'Chemistry',biology:'Biology',history:'History',english:'English',coding:'Coding',statistics:'Statistics',economics:'Economics'};
+      const subjectMatch = url.pathname.slice(1).toLowerCase();
+      if (subjects[subjectMatch]) {
+        const name = subjects[subjectMatch];
+        return new Response(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name} Homework Help — AI Solver | \$1 per answer</title><meta name="description" content="Get ${name.toLowerCase()} homework solved step-by-step by AI. Paste your question, get the answer in seconds. \$1 per solve."><meta property="og:title" content="${name} Homework Solver — \$1/answer"><meta property="og:description" content="AI solves your ${name.toLowerCase()} homework step-by-step. Instant answers."><meta property="og:url" content="https://tutor.blackroad.io/${subjectMatch}"><link rel="canonical" href="https://tutor.blackroad.io/${subjectMatch}"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f5f5f5;font-family:'Space Grotesk',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center}h1{font-size:36px;margin-bottom:16px}p{opacity:.5;font-size:16px;margin-bottom:32px;max-width:500px;line-height:1.6}a{display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#FF2255,#8844FF);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:18px}.sub{margin-top:16px;opacity:.3;font-size:13px}</style></head><body><h1>${name} Homework Solver</h1><p>Paste any ${name.toLowerCase()} question. AI solves it step-by-step in seconds. \$1 per answer. No subscription needed.</p><a href="/#q=${encodeURIComponent(name + ' problem')}">Solve ${name} Now</a><p class="sub">Powered by BlackRoad OS AI — tutor.blackroad.io</p></body></html>`, {headers:{"Content-Type":"text/html;charset=utf-8"}});
       }
 
       if (request.method === "POST" && url.pathname === "/webhook/stripe") {
@@ -60,7 +73,8 @@ async function handleSolve(request, env) {
   if (question.length > 4000) return json({ error: "Question too long (4000 char max)" }, 400);
 
   const solveId = crypto.randomUUID().slice(0, 12);
-  const fullAnswer = await generateAnswer(question, env);
+  const mode = body?.mode || "default"; // default, eli5, practice
+  const fullAnswer = await generateAnswer(question, env, mode);
   const preview = makePreview(fullAnswer);
 
   await ensureTable(env.DB);
@@ -69,33 +83,37 @@ async function handleSolve(request, env) {
      VALUES (?, ?, ?, ?, 0, NULL, datetime('now'), datetime('now'))`
   ).bind(solveId, question, preview, fullAnswer).run();
 
-  // Stripe checkout (only if keys are configured)
+  // Free preview (first 3 lines), paywall for full answer
   let checkout_url = null;
-  if (env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_ID) {
+  let paid = false;
+  if (env.STRIPE_PRICE_ID && env.STRIPE_SECRET_KEY) {
     try {
-      const checkout = await createCheckoutSession({ env, solveId, question });
-      await env.DB.prepare(
-        `UPDATE solves SET stripe_checkout_session_id = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(checkout.id, solveId).run();
-      checkout_url = checkout.url;
-    } catch (e) {
-      // Stripe not configured yet — still return preview
-      console.log('Stripe error (non-fatal):', e.message);
-    }
+      checkout_url = await createCheckoutSession({ env, solveId, question });
+    } catch {}
   }
-
-  // If no Stripe yet, give full answer free (launch mode)
   if (!checkout_url) {
+    // No Stripe configured — give full answer (launch mode)
+    paid = true;
     await env.DB.prepare(`UPDATE solves SET paid = 1, updated_at = datetime('now') WHERE id = ?`).bind(solveId).run();
   }
+
+  // Share URL for viral loop
+  const shareUrl = `https://tutor.blackroad.io/solve/${solveId}`;
+  const shareText = encodeURIComponent(`AI solved my homework in seconds! Try it: ${shareUrl}`);
 
   return json({
     id: solveId,
     preview,
-    paid: !checkout_url,
-    full_answer: !checkout_url ? fullAnswer : undefined,
+    paid,
+    full_answer: paid ? fullAnswer : undefined,
+    mode,
     checkout_url,
-    retrieve_url: `${env.APP_URL || 'https://tutor.blackroad.io'}/solve/${solveId}`,
+    retrieve_url: shareUrl,
+    share: {
+      url: shareUrl,
+      twitter: `https://twitter.com/intent/tweet?text=${shareText}`,
+      copy: shareUrl,
+    },
   });
 }
 
@@ -147,14 +165,19 @@ async function ensureTable(db) {
   )`).run();
 }
 
-async function generateAnswer(question, env) {
+async function generateAnswer(question, env, mode) {
+  const prompts = {
+    default: "You are a precise homework tutor on BlackRoad OS. Give a correct, step-by-step answer. Show your work. Be warm and encouraging. If ambiguous, state your assumption.",
+    eli5: "You are a friendly tutor explaining to a 5-year-old. Use simple words, fun analogies, and no jargon. Make it fun! Use emojis sparingly. Keep it short and clear.",
+    practice: "You are a tutor. The student just solved a problem. Generate 3 similar practice problems of the same type and difficulty. Number them 1-3. Don't solve them — just give the problems.",
+  };
   const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
     messages: [
-      { role: "system", content: "You are a precise homework tutor on BlackRoad OS. Give a correct, step-by-step answer. Show your work. Be warm and encouraging. If ambiguous, state your assumption." },
-      { role: "user", content: question },
+      { role: "system", content: prompts[mode] || prompts.default },
+      { role: "user", content: mode === "practice" ? "Generate 3 practice problems similar to: " + question : question },
     ],
     max_tokens: 900,
-    temperature: 0.2,
+    temperature: mode === "practice" ? 0.7 : 0.2,
   });
   const text = result?.response || "";
   if (!text.trim()) throw new Error("AI returned empty answer");
@@ -319,9 +342,25 @@ textarea::placeholder{color:#333}
 </style></head><body>
 <div class="card">
   <h1>Homework Solver</h1>
-  <p class="sub">Paste your question. Get a step-by-step answer. $1 per solve. No subscription.</p>
+  <p class="sub">Paste your question. Get a step-by-step answer.</p>
+  <div style="background:var(--bg);border:1px solid var(--green);border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
+    <p style="color:var(--green);font-size:18px;font-weight:700;font-family:'Space Grotesk',sans-serif">First month free. Everything unlocked.</p>
+    <p style="color:var(--dim);font-size:12px;margin-top:6px;line-height:1.6">Sign up and get full access to the entire BlackRoad OS.<br>Tutor, Chat, Search, Social, Canvas, Video, Memory, RoadTrip, PitStop — all of it.</p>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;min-width:100px">
+        <p style="color:var(--text);font-size:16px;font-weight:700;font-family:'Space Grotesk',sans-serif">$10<span style="color:var(--dim);font-size:11px;font-weight:400">/mo</span></p>
+        <p style="color:var(--dim);font-size:10px;margin-top:2px">Per module</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--green);border-radius:6px;padding:10px 14px;min-width:100px">
+        <p style="color:var(--green);font-size:16px;font-weight:700;font-family:'Space Grotesk',sans-serif">$100<span style="color:var(--dim);font-size:11px;font-weight:400">/mo</span></p>
+        <p style="color:var(--dim);font-size:10px;margin-top:2px">Everything</p>
+      </div>
+    </div>
+    <a href="https://auth.blackroad.io" style="display:inline-block;margin-top:12px;padding:10px 24px;background:var(--green);color:#000;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif">Start free month</a>
+    <p style="color:var(--dim);font-size:10px;margin-top:8px">Cancel anytime. Export your data anytime. Your devices become your network.</p>
+  </div>
   <textarea id="q" placeholder="What's your homework question?" autofocus></textarea>
-  <button class="btn" id="solve" onclick="doSolve()">Solve — $1</button>
+  <button class="btn" id="solve" onclick="doSolve()">Solve</button>
   <div class="examples" id="examples">
     <p style="color:var(--dim);font-size:12px;margin-top:16px">Try these:</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
@@ -335,7 +374,7 @@ textarea::placeholder{color:#333}
   <div class="result" id="result"></div>
   <div style="margin-top:20px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
     <p style="color:var(--text);font-size:13px;font-weight:600;margin-bottom:8px">How it works</p>
-    <p style="color:var(--dim);font-size:12px;line-height:1.6">1. Type your question<br>2. AI generates a full step-by-step solution<br>3. See a preview for free<br>4. Unlock the complete answer for $1<br><br>No subscription. No account. Just answers.</p>
+    <p style="color:var(--dim);font-size:12px;line-height:1.6">1. Sign up — first month is completely free, everything unlocked<br>2. Use any product: Tutor, Chat, Search, Social, Canvas, Video, Memory, RoadTrip<br>3. Your data migrates in. Old devices become nodes on your network via Bluetooth.<br>4. After free month: $10/module or $100/everything. Cancel anytime.<br><br>Your data is yours forever. Export as JSON. Take it anywhere. Even if you leave.</p>
   </div>
   <p class="price">Powered by BlackRoad OS — Remember the Road. Pave Tomorrow.</p>
 </div>
