@@ -319,10 +319,24 @@ textarea::placeholder{color:#333}
 </style></head><body>
 <div class="card">
   <h1>Homework Solver</h1>
-  <p class="sub">Paste your question. Get a step-by-step answer.</p>
+  <p class="sub">Paste your question. Get a step-by-step answer. $1 per solve. No subscription.</p>
   <textarea id="q" placeholder="What's your homework question?" autofocus></textarea>
   <button class="btn" id="solve" onclick="doSolve()">Solve — $1</button>
+  <div class="examples" id="examples">
+    <p style="color:var(--dim);font-size:12px;margin-top:16px">Try these:</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+      <button onclick="tryQ('What is the derivative of x^3 + 2x?')" style="background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">derivative of x³+2x</button>
+      <button onclick="tryQ('What is the quadratic formula?')" style="background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">quadratic formula</button>
+      <button onclick="tryQ('What is photosynthesis?')" style="background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">photosynthesis</button>
+      <button onclick="tryQ('Solve 2x + 5 = 15')" style="background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">solve 2x+5=15</button>
+      <button onclick="tryQ('What is the Pythagorean theorem?')" style="background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">Pythagorean theorem</button>
+    </div>
+  </div>
   <div class="result" id="result"></div>
+  <div style="margin-top:20px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+    <p style="color:var(--text);font-size:13px;font-weight:600;margin-bottom:8px">How it works</p>
+    <p style="color:var(--dim);font-size:12px;line-height:1.6">1. Type your question<br>2. AI generates a full step-by-step solution<br>3. See a preview for free<br>4. Unlock the complete answer for $1<br><br>No subscription. No account. Just answers.</p>
+  </div>
   <p class="price">Powered by BlackRoad OS — Remember the Road. Pave Tomorrow.</p>
 </div>
 <script>
@@ -352,6 +366,7 @@ async function doSolve(){
   btn.disabled=false;btn.textContent='Solve Another — $1';
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');}
+function tryQ(q){document.getElementById('q').value=q;document.getElementById('examples').style.display='none';doSolve();}
 document.getElementById('q').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSolve();}});
 </script>
 <!-- Lucidia Assistant Panel -->
